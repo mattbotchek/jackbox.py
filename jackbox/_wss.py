@@ -180,9 +180,9 @@ class WSSClient():
         self._generate_uuid()
 
         self.room_data, ws_id = await self.client._http.connect(code)
-        self.app_id = self.room_data["appid"]
+        self.app_id = self.room_data["body"]["appId"]
 
-        ws_uri = _WS_URI.format(self.room_data["server"], ws_id)
+        ws_uri = _WS_URI.format(self.room_data["body"]["host"], ws_id)
         self.ws = await websockets.connect(ws_uri)
 
         # check the first recv
@@ -194,7 +194,7 @@ class WSSClient():
 
         self.recv_handler_task = self.loop.create_task(self._recv_handler())
 
-        await self.join(name, self.room_data["joinAs"])
+        await self.join(name, "audience")
 
     # dispatching
 
@@ -214,7 +214,7 @@ class WSSClient():
         blob = data["blob"]
 
         if blob != self.customer_blob:
-            cls, _ = _BLOB_TYPE_MAP[self.room_data["apptag"]]
+            cls, _ = _BLOB_TYPE_MAP[self.room_data["body"]["appTag"]]
             
             try:
                 before = self.customer_blob and cls.from_data(self.customer_blob)
@@ -231,7 +231,7 @@ class WSSClient():
         blob = data["blob"]
 
         if blob != self.room_blob:
-            _, cls = _BLOB_TYPE_MAP[self.room_data["apptag"]]
+            _, cls = _BLOB_TYPE_MAP[self.room_data["body"]["appTag"]]
 
             try:
                 before = self.room_blob and cls.from_data(self.room_blob)
@@ -277,7 +277,7 @@ class WSSClient():
         await self._send(5, data)
 
     async def start_countdown(self):
-        message = _START_COUNTDOWN_MAP[self.room_data["apptag"]]
+        message = _START_COUNTDOWN_MAP[self.room_data["body"]["appTag"]]
 
         data = {
             "args": [{
@@ -294,7 +294,7 @@ class WSSClient():
         await self._send(5, data)
 
     async def cancel_countdown(self):
-        message = _CANCEL_COUNTDOWN_MAP[self.room_data["apptag"]]
+        message = _CANCEL_COUNTDOWN_MAP[self.room_data["body"]["appTag"]]
 
         data = {
             "args": [{

@@ -18,9 +18,9 @@ import json
 import time
 
 import aiohttp
+import requests
 
-
-_SV_URI = "http://blobcast.jackboxgames.com/room/{0}"
+_SV_URI = "http://ecast.jackboxgames.com/api/v2/rooms/"
 _ID_URI = "https://{0}:38203/socket.io/1?t={1}"
 
 
@@ -44,29 +44,39 @@ class HTTPClient():
         await self.session.close()
 
     async def connect(self, code):
-        self.session = aiohttp.ClientSession()
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36', "Upgrade-Insecure-Requests": "1","DNT": "1","Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","Accept-Language": "en-US,en;q=0.5","Accept-Encoding": "gzip, deflate"}
+        self.session = aiohttp.ClientSession(headers=headers)
 
         # room_data
 
-        sv_uri = _SV_URI.format(code)
+        sv_uri = _SV_URI+code
 
-        async with self.session.get(sv_uri) as response:
-            text = await response.text()
+        print(sv_uri)
+        
+        payload = {}
+
+        with requests.request("GET", sv_uri, headers=headers, json = payload) as response:
+            text = response.text
+            
+            print(text)
+            print('\n\n')
 
             try:
                 room_data = json.loads(text)
+                print(json.loads(text))
             except (json.JSONDecodeError) as e:
                 raise Exception("invalid room code")
 
-        if room_data["joinAs"] == "full":
+        if room_data["body"]["full"] == "true":
             raise Exception("room full")
 
         # ws_id
 
-        id_uri = _ID_URI.format(room_data["server"], int(time.time() * 1000))
+        id_uri = _ID_URI.format(room_data["body"]["host"], int(time.time() * 1000))
         
-        async with self.session.get(id_uri) as response:
-            text = await response.text()
+        with requests.request("GET", id_uri, headers=headers, json = payload, verify=False) as response:
+            text = response.text
+            print(text)
             ws_id, *_, type = text.split(":")
             
             if not all([n == "60" for (n) in _]):
